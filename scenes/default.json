@@ -1,0 +1,218 @@
+{
+  "camera": {
+    "pos": [0.0, 5.0, 10.0],
+    "target": [0.0, 0.0, 0.0]
+  },
+  "root": [
+    {
+      "name": "Room Shell",
+      "type": "group",
+      "pos": [0, 0, 0],
+      "rot": [0, 0, 0],
+      "scale": [1, 1, 1],
+      "children": [
+        {
+          "name": "floor",
+          "type": "mesh",
+          "model": "floor.obj",
+          "pos": [-0.123382, 0.011749, 0.004674],
+          "rot": [0.0, 0.0, 0.0],
+          "scale": [0.592, 0.641, 1.000]
+        },
+        {
+          "name": "wall_left",
+          "type": "mesh",
+          "model": "wall_left.obj",
+          "pos": [-2.32076, 0.000947, 1.40408],
+          "rot": [0.0, 90.0, 0.0],
+          "scale": [0.383, 0.641, 1.000]
+        },
+        {
+          "name": "wall_right",
+          "type": "mesh",
+          "model": "wall_right.obj",
+          "pos": [-0.109869, 2.372, 1.40161],
+          "rot": [-90.0, 90.0, 0.0],
+          "scale": [0.383, 0.583, 1.000]
+        }
+      ]
+    },
+    {
+      "name": "Wall Clock Group",
+      "type": "group",
+      "pos": [-2.26192, -1.81064, 2.08198],
+      "rot": [90.0, 0.0, 0.0],
+      "scale": [0.591, 0.591, 0.591],
+      "children": [
+        {
+          "name": "clock_body",
+          "type": "mesh",
+          "model": "clock.obj",
+          "pos": [0, 0, 0],
+          "rot": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "name": "clock_hour",
+          "type": "mesh",
+          "model": "clock_hr.obj",
+          "pos": [0, 0, 0.02],
+          "rot": [0.0, 0.0, 0.0],
+          "scale": [1, 1, 1],
+          "isAnimated": true
+        },
+        {
+          "name": "clock_min",
+          "type": "mesh",
+          "model": "clockhand_min.obj",
+          "pos": [0, 0, 0.03],
+          "rot": [90.0, 0.0, 180.0],
+          "scale": [1, 1, 1],
+          "isAnimated": true
+        }
+      ]
+    },
+    {
+      "name": "Furniture",
+      "type": "group",
+      "pos": [0, 0, 0],
+      "rot": [0, 0, 0],
+      "scale": [1, 1, 1],
+      "children": [
+        {
+          "name": "big_sofa",
+          "type": "mesh",
+          "model": "big_sofa.obj",
+          "pos": [-1.85372, 0.030087, 0.197653],
+          "rot": [90.0, 0.0, 90.0],
+          "scale": [1.000, 1.000, 1.000]
+        },
+        {
+          "name": "sofa_small",
+          "type": "mesh",
+          "model": "sofa.obj",
+          "pos": [-0.077273, 1.83918, 0.335926],
+          "rot": [0.0, 0.0, 0.0],
+          "scale": [0.022, 0.024, 0.029]
+        },
+        {
+          "name": "table",
+          "type": "mesh",
+          "model": "table.obj",
+          "pos": [-0.284667, -0.104442, 0.048093],
+          "rot": [0.0, 0.0, 0.0],
+          "scale": [1.328, 1.334, 1.000]
+        },
+        {
+          "name": "tv",
+          "type": "mesh",
+          "model": "tv.obj",
+          "pos": [2.02549, 0.131604, 0.719501],
+          "rot": [0.0, 0.0, 180.0],
+          "scale": [0.032, 0.032, 0.032]
+        },
+        {
+          "name": "bookshelf",
+          "type": "mesh",
+          "model": "bookshelf.obj",
+          "pos": [-2.05278, -1.77133, 0.029883],
+          "rot": [90.0, 0.0, 90.0],
+          "scale": [0.013, 0.013, 0.013]
+        },
+        {
+          "name": "shelf",
+          "type": "mesh",
+          "model": "shelf.obj",
+          "pos": [-2.18111, 0.072122, 1.49837],
+          "rot": [90.0, 0.0, 0.0],
+          "scale": [0.002, 0.002, 0.002]
+        }
+      ]
+    },
+    {
+      "name": "Decor",
+      "type": "group",
+      "pos": [0, 0, 0],
+      "rot": [0, 0, 0],
+      "scale": [1, 1, 1],
+      "children": [
+        {
+          "name": "carpet",
+          "type": "mesh",
+          "model": "carpet.obj",
+          "pos": [-0.038913, 0.243589, 0.04633],
+          "rot": [0.0, 0.0, 0.0],
+          "scale": [1.193, 1.1833, 1.000]
+        },
+        {
+          "name": "cactus",
+          "type": "mesh",
+          "model": "cactus.obj",
+          "pos": [-0.154521, -0.130657, 0.502657],
+          "rot": [0.0, 0.0, -90.0],
+          "scale": [0.006, 0.006, 0.006]
+        },
+        {
+          "name": "window_left_group",
+          "type": "group",
+          "pos": [-0.497512, 2.2903, 1.60409],
+          "rot": [0, 0, 0],
+          "scale": [1, 1, 1],
+          "children": [
+             { "name": "frame", "type": "mesh", "model": "window_left.obj", "pos": [0,0,0], "rot": [0,0,90], "scale": [0.010, 0.020, 0.019] },
+             { "name": "curtain", "type": "mesh", "model": "curtain_left.obj", "pos": [-0.47, -0.07, -0.01], "rot": [0,0,0], "scale": [1,1,1] }
+          ]
+        },
+        {
+          "name": "window_right_group",
+          "type": "group",
+          "pos": [0.349003, 2.2903, 1.60409],
+          "rot": [0, 0, 0],
+          "scale": [1, 1, 1],
+          "children": [
+             { "name": "frame", "type": "mesh", "model": "window_right.obj", "pos": [0,0,0], "rot": [0,0,90], "scale": [0.010, 0.020, 0.019] },
+             { "name": "curtain", "type": "mesh", "model": "curtain_right.obj", "pos": [0.27, -0.07, -0.01], "rot": [0,0,0], "scale": [1,1,1] }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Floor Lamp",
+      "type": "group",
+      "pos": [-1.82893, 1.8625, 0.088057],
+      "rot": [0.0, 0.0, 0.0],
+      "scale": [0.179, 0.179, 0.026],
+      "children": [
+        {
+          "name": "lamp_body",
+          "type": "mesh",
+          "model": "lamp.obj",
+          "pos": [0, 0, 0],
+          "rot": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        {
+          "name": "light_bulb_1",
+          "type": "light",
+          "pos": [-0.14, 0.16, 47.0], 
+          "strength": 5.0,
+          "color": [1.0, 0.9, 0.7]
+        },
+        {
+          "name": "light_bulb_2",
+          "type": "light",
+          "pos": [0.25, -0.34, 47.0],
+          "strength": 5.0,
+          "color": [1.0, 0.9, 0.7]
+        }
+      ]
+    },
+    {
+      "name": "Window Light",
+      "type": "light",
+      "pos": [-0.04039, 3.13399, 1.88299],
+      "strength": 8.0,
+      "color": [0.8, 0.8, 1.0]
+    }
+  ]
+}
