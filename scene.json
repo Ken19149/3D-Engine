@@ -55,7 +55,7 @@
         {
           "name": "clock_hour",
           "type": "mesh",
-          "model": "clock_hr.obj",
+          "model": "clockhand_hr.obj",
           "pos": [0, 0, 0.02],
           "rot": [0.0, 0.0, 0.0],
           "scale": [1, 1, 1],

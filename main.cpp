@@ -1,390 +1,309 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <GL/glut.h>  // Takes care of GL/gl.h and GL/glu.h automatically
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-// JSON Library (Download nlohmann/json.hpp)
-#include <nlohmann/json.hpp>
-
+// UTILITIES
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
-#include <map>
+#include <cmath>
+
+// LIBRARIES
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-using json = nlohmann::json;
-using namespace std;
-
 // ==========================================
-// 1. SHADERS (Hardcoded for simplicity)
-// ==========================================
-const char* vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
-
-out vec3 Normal;
-out vec3 FragPos;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main() {
-    FragPos = vec3(model * vec4(aPos, 1.0));
-    Normal = mat3(transpose(inverse(model))) * aNormal;  
-    gl_Position = projection * view * vec4(FragPos, 1.0);
-}
-)";
-
-const char* fragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;
-in vec3 Normal;
-in vec3 FragPos;
-
-uniform vec3 lightPos;
-uniform vec3 objectColor;
-uniform bool isSelected;
-
-void main() {
-    // Simple Lighting
-    vec3 lightColor = vec3(1.0, 1.0, 1.0);
-    vec3 ambient = 0.1 * lightColor;
-    vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor;
-    
-    vec3 result = (ambient + diffuse) * objectColor;
-
-    // Highlight logic
-    if(isSelected) {
-        result = result + vec3(0.4, 0.4, 0.0); // Yellow glow
-    }
-
-    FragColor = vec4(result, 1.0);
-}
-)";
-
-// ==========================================
-// 2. CLASSES
+// 1. DATA STRUCTURES
 // ==========================================
 
-// Holds the actual OpenGL buffers. Shared by multiple objects.
-struct Mesh {
-    unsigned int VAO, VBO;
-    int indexCount;
-    
-    // Generates a simple cube for testing if OBJ fails
-    void createCube() {
-        float vertices[] = {
-            // positions          // normals
-            -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-             0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-            -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-            -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-
-            -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-             0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-            -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-            -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-            
-            // ... (Add other faces for a full cube) ...
-            // For brevity, just 2 faces here. In real code, add all 6 faces.
-        };
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        indexCount = 36; 
-    }
+struct Model {
+    std::string name;
+    std::vector<float> vertices;
+    std::vector<float> normals;
+    bool loaded = false;
 };
 
-// Resource Manager to load meshes once
-class ResourceManager {
-public:
-    std::map<std::string, Mesh*> meshes;
-
-    Mesh* getMesh(std::string name) {
-        if (meshes.find(name) == meshes.end()) {
-            // Load OBJ here using tinyobjloader
-            // For now, return a default CUBE for everything
-            Mesh* m = new Mesh();
-            m->createCube();
-            meshes[name] = m;
-            std::cout << "Loaded (Placeholder): " << name << std::endl;
-        }
-        return meshes[name];
-    }
-};
-
-// The Scene Node (The most important part)
 class Node {
 public:
     std::string name;
-    std::string type; // "mesh" or "group"
+    std::string type;
     
     // Transform
-    glm::vec3 pos = glm::vec3(0);
-    glm::vec3 rot = glm::vec3(0); // Euler angles
-    glm::vec3 scale = glm::vec3(1);
+    float x = 0, y = 0, z = 0;
+    float rx = 0, ry = 0, rz = 0;
+    float sx = 1, sy = 1, sz = 1;
 
-    Mesh* mesh = nullptr; // Null if it's a group
+    Model* modelData = nullptr;
     std::vector<Node*> children;
-    Node* parent = nullptr;
-
+    
     bool isSelected = false;
+    bool isAnimated = false;
+    float animSpeed = 0.0f;
 
-    // Recursive Draw
-    void Draw(unsigned int shaderID, glm::mat4 parentTransform) {
-        // 1. Calculate Local Matrix
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, pos);
-        model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1,0,0));
-        model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0,1,0));
-        model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0,0,1));
-        model = glm::scale(model, scale);
+    void DrawLegacy() {
+        glPushMatrix();
+        glTranslatef(x, y, z);
+        glRotatef(rz, 0, 0, 1); // Z
+        glRotatef(ry, 0, 1, 0); // Y
+        glRotatef(rx, 1, 0, 0); // X
+        glScalef(sx, sy, sz);
 
-        // 2. Calculate Global Matrix
-        glm::mat4 globalTransform = parentTransform * model;
+        if (modelData && modelData->loaded) {
+            if (isSelected) glColor3f(1.0f, 1.0f, 0.0f); // Yellow highlight
+            else glColor3f(1.0f, 1.0f, 1.0f);            // White default
 
-        // 3. Draw Self (if mesh exists)
-        if (mesh) {
-            unsigned int modelLoc = glGetUniformLocation(shaderID, "model");
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(globalTransform));
-            
-            unsigned int colLoc = glGetUniformLocation(shaderID, "objectColor");
-            unsigned int selLoc = glGetUniformLocation(shaderID, "isSelected");
-            
-            // Hardcoded color for demo
-            glUniform3f(colLoc, 0.5f, 0.5f, 0.5f); 
-            glUniform1i(selLoc, isSelected);
-
-            glBindVertexArray(mesh->VAO);
-            glDrawArrays(GL_TRIANGLES, 0, mesh->indexCount); // Use glDrawElements if using EBO
+            glBegin(GL_TRIANGLES);
+            for (size_t i = 0; i < modelData->vertices.size() / 3; i++) {
+                if (!modelData->normals.empty()) {
+                    glNormal3f(modelData->normals[3*i+0], modelData->normals[3*i+1], modelData->normals[3*i+2]);
+                }
+                glVertex3f(modelData->vertices[3*i+0], modelData->vertices[3*i+1], modelData->vertices[3*i+2]);
+            }
+            glEnd();
         }
 
-        // 4. Draw Children
-        for (Node* child : children) {
-            child->Draw(shaderID, globalTransform);
-        }
+        for (Node* child : children) child->DrawLegacy();
+        glPopMatrix();
     }
 };
 
 // ==========================================
-// 3. GLOBAL VARIABLES
+// 2. GLOBALS
 // ==========================================
-ResourceManager resources;
-std::vector<Node*> sceneGraph; // Root nodes
+std::vector<Node*> sceneGraph;
+std::vector<Node*> flatList;
+std::vector<Model*> loadedModels; // Pointers to prevent crashing!
+
 Node* selectedNode = nullptr;
-// For camera
-glm::vec3 cameraPos   = glm::vec3(0.0f, 5.0f, 15.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+int selectionIndex = 0;
+bool clockRunning = true;
+
+// Camera (Z-Up default)
+float camX = 0.0f, camY = -5.0f, camZ = 2.0f; // Back 5 units, Up 2 units
 
 // ==========================================
-// 4. JSON LOADING HELPER
+// 3. MODEL LOADING
+// ==========================================
+Model* GetModel(std::string filename) {
+    for (auto* m : loadedModels) {
+        if (m->name == filename) return m;
+    }
+
+    std::cout << "Loading: " << filename << " ... ";
+    Model* m = new Model(); // Allocate on heap
+    m->name = filename;
+    
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    std::string fullPath = "models/" + filename;
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullPath.c_str(), "models/");
+
+    if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
+    if (!ret) {
+        std::cout << "FAILED! " << err << std::endl;
+        delete m;
+        return nullptr;
+    }
+
+    // Flatten
+    for (const auto& shape : shapes) {
+        for (const auto& index : shape.mesh.indices) {
+            m->vertices.push_back(attrib.vertices[3 * index.vertex_index + 0]);
+            m->vertices.push_back(attrib.vertices[3 * index.vertex_index + 1]);
+            m->vertices.push_back(attrib.vertices[3 * index.vertex_index + 2]);
+
+            if (index.normal_index >= 0) {
+                m->normals.push_back(attrib.normals[3 * index.normal_index + 0]);
+                m->normals.push_back(attrib.normals[3 * index.normal_index + 1]);
+                m->normals.push_back(attrib.normals[3 * index.normal_index + 2]);
+            }
+        }
+    }
+    
+    m->loaded = true;
+    std::cout << "Success (" << m->vertices.size()/3 << " tris)" << std::endl;
+    loadedModels.push_back(m);
+    return m;
+}
+
+// ==========================================
+// 4. JSON LOADER
 // ==========================================
 Node* parseNode(json& jNode) {
     Node* n = new Node();
     n->name = jNode.value("name", "Unnamed");
     n->type = jNode.value("type", "group");
 
-    // Load Transform
-    if(jNode.contains("pos")) {
-        n->pos.x = jNode["pos"][0]; n->pos.y = jNode["pos"][1]; n->pos.z = jNode["pos"][2];
-    }
-    if(jNode.contains("rot")) {
-        n->rot.x = jNode["rot"][0]; n->rot.y = jNode["rot"][1]; n->rot.z = jNode["rot"][2];
-    }
-    if(jNode.contains("scale")) {
-        n->scale.x = jNode["scale"][0]; n->scale.y = jNode["scale"][1]; n->scale.z = jNode["scale"][2];
-    }
+    if(jNode.contains("pos")) { n->x = jNode["pos"][0]; n->y = jNode["pos"][1]; n->z = jNode["pos"][2]; }
+    if(jNode.contains("rot")) { n->rx = jNode["rot"][0]; n->ry = jNode["rot"][1]; n->rz = jNode["rot"][2]; }
+    if(jNode.contains("scale")) { n->sx = jNode["scale"][0]; n->sy = jNode["scale"][1]; n->sz = jNode["scale"][2]; }
+    
+    n->isAnimated = jNode.value("isAnimated", false);
+    n->animSpeed = jNode.value("speed", 1.0f);
 
-    // Load Mesh
     if (n->type == "mesh" && jNode.contains("model")) {
-        n->mesh = resources.getMesh(jNode["model"]);
+        n->modelData = GetModel(jNode["model"]);
     }
 
-    // Load Children Recursively
     if (jNode.contains("children")) {
         for (auto& jChild : jNode["children"]) {
             Node* childObj = parseNode(jChild);
-            childObj->parent = n;
             n->children.push_back(childObj);
         }
     }
-
+    
+    flatList.push_back(n);
     return n;
 }
 
-void loadScene(std::string path) {
+void LoadScene(std::string path) {
     std::ifstream f(path);
-    if(!f.is_open()) {
-        std::cerr << "Could not open " << path << std::endl;
-        return;
-    }
+    if(!f.is_open()) { std::cerr << "No scene.json found!\n"; return; }
     json data = json::parse(f);
 
-    // Setup Camera
-    cameraPos.x = data["camera"]["pos"][0];
-    cameraPos.y = data["camera"]["pos"][1];
-    cameraPos.z = data["camera"]["pos"][2];
-
-    // Build Graph
     for (auto& item : data["root"]) {
         sceneGraph.push_back(parseNode(item));
     }
-    std::cout << "Scene Loaded." << std::endl;
-}
-
-// ==========================================
-// 5. HELPER FUNCTIONS
-// ==========================================
-unsigned int createShader() {
-    // Compile Vertex
-    unsigned int vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertex);
-    
-    // Compile Fragment
-    unsigned int fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragment);
-
-    // Link
-    unsigned int program = glCreateProgram();
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-    return program;
-}
-
-void processInput(GLFWwindow *window) {
-    float speed = 0.05f;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += speed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= speed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
-
-    // Object Transformations (Only if selected)
-    if(selectedNode) {
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) selectedNode->pos.x += 0.01f;
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)  selectedNode->pos.x -= 0.01f;
-        // Add rotation logic here...
+    if(!flatList.empty()) {
+        selectedNode = flatList[0];
+        selectedNode->isSelected = true;
     }
 }
 
-// Helper to flatten graph for selection UI
-void getFlatList(Node* n, std::vector<Node*>& list) {
-    list.push_back(n);
-    for(auto c : n->children) getFlatList(c, list);
-}
-
 // ==========================================
-// 6. MAIN
+// 5. GLUT FUNCTIONS (Standard Class Style)
 // ==========================================
-int main() {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Room Editor", NULL, NULL);
-    if (window == NULL) { glfwTerminate(); return -1; }
-    glfwMakeContextCurrent(window);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { return -1; }
-
+void init() {
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    
+    // Basic Light
+    GLfloat light_pos[] = { 10.0, 10.0, 10.0, 1.0 };
+    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
+    
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f); // Dark Gray Background
+}
 
-    unsigned int shaderProgram = createShader();
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
 
-    // LOAD SCENE
-    loadScene("scene.json");
+    // Camera: Eye(x,y,z), Target(0,0,0), Up(0,0,1) -> Z is Up
+    gluLookAt(camX, camY, camZ,  0, 0, 0,  0, 0, 1);
 
-    // UI State
-    int uiSelectionIndex = 0;
-    bool keyPressed = false;
+    // Draw Floor Grid (Optional helper)
+    glDisable(GL_LIGHTING);
+    glBegin(GL_LINES);
+    glColor3f(0.5, 0.5, 0.5);
+    for(int i=-10; i<=10; i++) {
+        glVertex3f(i, -10, 0); glVertex3f(i, 10, 0);
+        glVertex3f(-10, i, 0); glVertex3f(10, i, 0);
+    }
+    glEnd();
+    glEnable(GL_LIGHTING);
 
-    while (!glfwWindowShouldClose(window)) {
-        processInput(window);
-
-        // --- Selection Logic (Simple Cycle) ---
-        if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS && !keyPressed) {
-            std::vector<Node*> flatList;
-            for(auto n : sceneGraph) getFlatList(n, flatList);
-            
-            // Deselect old
-            if(selectedNode) selectedNode->isSelected = false;
-            
-            // Increment
-            uiSelectionIndex++;
-            if(uiSelectionIndex >= flatList.size()) uiSelectionIndex = 0;
-            
-            // Select new
-            selectedNode = flatList[uiSelectionIndex];
-            selectedNode->isSelected = true;
-            
-            std::cout << "Selected: " << selectedNode->name << std::endl;
-            keyPressed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE) keyPressed = false;
-
-
-        // --- Render ---
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glUseProgram(shaderProgram);
-
-        // Camera Transforms
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 5.0f, 10.0f, 5.0f);
-
-        // Draw Scene Graph
-        glm::mat4 identity = glm::mat4(1.0f);
-        for (Node* node : sceneGraph) {
-            node->Draw(shaderProgram, identity);
-        }
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    // Draw Scene
+    for (Node* n : sceneGraph) {
+        n->DrawLegacy();
     }
 
-    glfwTerminate();
+    glutSwapBuffers();
+}
+
+void reshape(int w, int h) {
+    if (h == 0) h = 1;
+    glViewport(0, 0, w, h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (float)w / h, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    float speed = 0.1f;
+    float rotSpeed = 2.0f;
+
+    switch(key) {
+        case 27: exit(0); break; // ESC
+        
+        // Tab to switch selection
+        case 9: // TAB key code
+            if(selectedNode) selectedNode->isSelected = false;
+            selectionIndex++;
+            if(selectionIndex >= flatList.size()) selectionIndex = 0;
+            selectedNode = flatList[selectionIndex];
+            selectedNode->isSelected = true;
+            std::cout << "Selected: " << selectedNode->name << std::endl;
+            break;
+
+        case '/': clockRunning = !clockRunning; break;
+        case '[': if(selectedNode) selectedNode->animSpeed -= 0.1f; break;
+        case ']': if(selectedNode) selectedNode->animSpeed += 0.1f; break;
+
+        // Transformation (QWERTY)
+        case 'q': if(selectedNode) selectedNode->x += speed; break;
+        case 'a': if(selectedNode) selectedNode->x -= speed; break;
+        case 'w': if(selectedNode) selectedNode->y += speed; break;
+        case 's': if(selectedNode) selectedNode->y -= speed; break;
+        case 'e': if(selectedNode) selectedNode->z += speed; break;
+        case 'd': if(selectedNode) selectedNode->z -= speed; break;
+
+        case 'r': if(selectedNode) selectedNode->rx += rotSpeed; break;
+        case 'f': if(selectedNode) selectedNode->rx -= rotSpeed; break;
+        case 't': if(selectedNode) selectedNode->ry += rotSpeed; break;
+        case 'g': if(selectedNode) selectedNode->ry -= rotSpeed; break;
+        case 'y': if(selectedNode) selectedNode->rz += rotSpeed; break;
+        case 'h': if(selectedNode) selectedNode->rz -= rotSpeed; break;
+    }
+    glutPostRedisplay();
+}
+
+void specialKeys(int key, int x, int y) {
+    float camSpeed = 0.5f;
+    switch(key) {
+        case GLUT_KEY_UP:    camY += camSpeed; break;
+        case GLUT_KEY_DOWN:  camY -= camSpeed; break;
+        case GLUT_KEY_LEFT:  camX -= camSpeed; break;
+        case GLUT_KEY_RIGHT: camX += camSpeed; break;
+        case GLUT_KEY_PAGE_UP: camZ += camSpeed; break;
+        case GLUT_KEY_PAGE_DOWN: camZ -= camSpeed; break;
+    }
+    glutPostRedisplay();
+}
+
+void idle() {
+    if (clockRunning) {
+        for(auto n : flatList) {
+            if(n->isAnimated) n->rz += n->animSpeed;
+        }
+        glutPostRedisplay();
+    }
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(1024, 768);
+    glutCreateWindow("GLUT Room Editor");
+
+    init();
+    LoadScene("scene.json");
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboard);
+    glutSpecialFunc(specialKeys); // For Arrow Keys
+    glutIdleFunc(idle);
+
+    std::cout << "Controls:\nTAB: Select Object\nArrows: Move Camera\nQWE/ASD: Move Object\nRTY/FGH: Rotate Object\n";
+    
+    glutMainLoop();
     return 0;
 }
