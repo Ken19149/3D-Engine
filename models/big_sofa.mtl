@@ -1,4 +1,4 @@
-# Blender 4.5.3 LTS MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room.blend'
 # www.blender.org
 
 newmtl Material
@@ -9,7 +9,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd ../../../../../../../light-sofa-upholstery_albedo.png
+map_Kd textures/light-sofa-upholstery_albedo.png
 
 newmtl Material.022
 Ns 250.000000
@@ -19,4 +19,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd ../../../../../../../light-sofa-upholstery_albedo.png
+map_Kd textures/light-sofa-upholstery_albedo.png

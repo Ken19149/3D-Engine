@@ -1,4 +1,4 @@
-# Blender 4.5.3 LTS MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room.blend'
 # www.blender.org
 
 newmtl Dark_Wood
@@ -9,8 +9,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd ../../../../../../../WoodFineDark004_COL_3K.jpg
-map_Bump -bm 10.000000 ../../../../../../../WoodFineDark004_NRM_3K.jpg
+map_Kd textures/WoodFineDark004_COL_3K.jpg
+map_Bump -bm 10.000000 textures/WoodFineDark004_NRM_3K.jpg
 
 newmtl Light
 Ns 250.000000
@@ -31,4 +31,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Bump -bm 10.000000 ../../../../../../../WoodFineDark004_NRM_3K.jpg
+map_Bump -bm 10.000000 textures/WoodFineDark004_NRM_3K.jpg

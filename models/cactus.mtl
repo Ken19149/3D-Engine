@@ -1,4 +1,4 @@
-# Blender 4.5.3 LTS MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room.blend'
 # www.blender.org
 
 newmtl Texture_0
@@ -9,7 +9,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd ../living_room/textures/cactus1.jpg
+map_Kd textures/cactus1.jpg
 
 newmtl Texture_1
 Ns 0.000000
@@ -19,4 +19,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd ../living_room/textures/cactus2.jpg
+map_Kd textures/cactus2.jpg

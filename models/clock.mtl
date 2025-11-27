@@ -1,15 +1,15 @@
-# Blender 4.5.3 LTS MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room.blend'
 # www.blender.org
 
 newmtl Uhr_2
 Ns 96.078453
 Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../living_room/textures/Uhr_ohne_Zeiger.jpg
 
 newmtl Uhr_2.001
 Ns 96.078453
@@ -19,7 +19,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.405354
 illum 9
-map_Kd ../living_room/textures/Uhr_ohne_Zeiger.jpg
+map_Kd textures/Uhr_ohne_Zeiger.jpg
 
 newmtl Uhr_2_NONE
 Ns 96.078453
@@ -29,7 +29,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../living_room/textures/Uhr_ohne_Zeiger.jpg
+map_Kd textures/Uhr_ohne_Zeiger.jpg
 
 newmtl Uhr_2_Rand
 Ns 96.078453
@@ -39,5 +39,15 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../living_room/textures/steel.jpg
-map_Bump ../living_room/textures/steel_nor.jpg
+map_Kd textures/steel.jpg
+map_Bump textures/steel_nor.jpg
+
+newmtl min_Zeiger
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2

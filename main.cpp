@@ -1,10 +1,7 @@
-#include <GL/glut.h>  // Takes care of GL/gl.h and GL/glu.h automatically
-
-// UTILITIES
+#include <GL/glut.h>
 #include <iostream>
 #include <vector>
 #include <string>
-#include <fstream>
 #include <cmath>
 
 // LIBRARIES
@@ -14,93 +11,103 @@ using json = nlohmann::json;
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 // ==========================================
-// 1. DATA STRUCTURES
+// 1. STRUCTURES
 // ==========================================
 
 struct Model {
     std::string name;
-    std::vector<float> vertices;
-    std::vector<float> normals;
+    std::vector<float> vertices;    // x, y, z
+    std::vector<float> normals;     // nx, ny, nz
+    std::vector<float> texcoords;   // u, v
+    GLuint textureID = 0;           // OpenGL Texture ID
     bool loaded = false;
 };
 
-class Node {
-public:
+struct Object {
     std::string name;
-    std::string type;
-    
     // Transform
     float x = 0, y = 0, z = 0;
     float rx = 0, ry = 0, rz = 0;
     float sx = 1, sy = 1, sz = 1;
 
-    Model* modelData = nullptr;
-    std::vector<Node*> children;
-    
-    bool isSelected = false;
-    bool isAnimated = false;
-    float animSpeed = 0.0f;
+    // Animation
+    bool spinAnimation = false;     // Does this object spin?
+    float spinSpeed = 0.0f;
 
-    void DrawLegacy() {
-        glPushMatrix();
-        glTranslatef(x, y, z);
-        glRotatef(rz, 0, 0, 1); // Z
-        glRotatef(ry, 0, 1, 0); // Y
-        glRotatef(rx, 1, 0, 0); // X
-        glScalef(sx, sy, sz);
-
-        if (modelData && modelData->loaded) {
-            if (isSelected) glColor3f(1.0f, 1.0f, 0.0f); // Yellow highlight
-            else glColor3f(1.0f, 1.0f, 1.0f);            // White default
-
-            glBegin(GL_TRIANGLES);
-            for (size_t i = 0; i < modelData->vertices.size() / 3; i++) {
-                if (!modelData->normals.empty()) {
-                    glNormal3f(modelData->normals[3*i+0], modelData->normals[3*i+1], modelData->normals[3*i+2]);
-                }
-                glVertex3f(modelData->vertices[3*i+0], modelData->vertices[3*i+1], modelData->vertices[3*i+2]);
-            }
-            glEnd();
-        }
-
-        for (Node* child : children) child->DrawLegacy();
-        glPopMatrix();
-    }
+    Model* model = nullptr;
 };
 
 // ==========================================
 // 2. GLOBALS
 // ==========================================
-std::vector<Node*> sceneGraph;
-std::vector<Node*> flatList;
-std::vector<Model*> loadedModels; // Pointers to prevent crashing!
+std::vector<Object*> sceneObjects;  // Flat list
+std::vector<Model*> loadedModels;   // Resource cache
 
-Node* selectedNode = nullptr;
+Object* selectedObject = nullptr;
 int selectionIndex = 0;
-bool clockRunning = true;
 
-// Camera (Z-Up default)
-float camX = 0.0f, camY = -5.0f, camZ = 2.0f; // Back 5 units, Up 2 units
+// Camera (Orbit)
+float cameraAngle = 0.0f;   // Rotation around the room
+float cameraHeight = 3.0f;  // Height (Lifted up slightly)
+float cameraDist = 8.0f;    // Distance (Close enough to see inside)
+
+bool isAnimating = true;
 
 // ==========================================
-// 3. MODEL LOADING
+// 3. TEXTURE LOADING
+// ==========================================
+GLuint LoadTextureFromFile(const char* filename) {
+    std::string fullPath = "models/" + std::string(filename);
+    
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 0);
+    
+    if (!data) {
+        std::cout << "Failed to load texture: " << fullPath << " (using white fallback)" << std::endl;
+        return 0;
+    }
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    int format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    
+    stbi_image_free(data);
+    return textureID;
+}
+
+// ==========================================
+// 4. MODEL LOADING
 // ==========================================
 Model* GetModel(std::string filename) {
     for (auto* m : loadedModels) {
         if (m->name == filename) return m;
     }
 
-    std::cout << "Loading: " << filename << " ... ";
-    Model* m = new Model(); // Allocate on heap
+    std::cout << "Loading Model: " << filename << "... ";
+    Model* m = new Model();
     m->name = filename;
-    
+
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
     std::string fullPath = "models/" + filename;
+    
+    // Using standard loader (trusting your texture paths)
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullPath.c_str(), "models/");
 
     if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
@@ -110,7 +117,12 @@ Model* GetModel(std::string filename) {
         return nullptr;
     }
 
-    // Flatten
+    if (!materials.empty() && !materials[0].diffuse_texname.empty()) {
+        std::string texName = materials[0].diffuse_texname;
+        std::cout << "[Texture: " << texName << "] ";
+        m->textureID = LoadTextureFromFile(texName.c_str());
+    }
+
     for (const auto& shape : shapes) {
         for (const auto& index : shape.mesh.indices) {
             m->vertices.push_back(attrib.vertices[3 * index.vertex_index + 0]);
@@ -122,99 +134,216 @@ Model* GetModel(std::string filename) {
                 m->normals.push_back(attrib.normals[3 * index.normal_index + 1]);
                 m->normals.push_back(attrib.normals[3 * index.normal_index + 2]);
             }
+
+            if (index.texcoord_index >= 0) {
+                m->texcoords.push_back(attrib.texcoords[2 * index.texcoord_index + 0]);
+                m->texcoords.push_back(attrib.texcoords[2 * index.texcoord_index + 1]);
+            }
         }
     }
-    
+
     m->loaded = true;
-    std::cout << "Success (" << m->vertices.size()/3 << " tris)" << std::endl;
+    std::cout << "Done. (" << m->vertices.size()/3 << " tris)" << std::endl;
     loadedModels.push_back(m);
     return m;
 }
 
 // ==========================================
-// 4. JSON LOADER
+// 5. SCENE SETUP
 // ==========================================
-Node* parseNode(json& jNode) {
-    Node* n = new Node();
-    n->name = jNode.value("name", "Unnamed");
-    n->type = jNode.value("type", "group");
-
-    if(jNode.contains("pos")) { n->x = jNode["pos"][0]; n->y = jNode["pos"][1]; n->z = jNode["pos"][2]; }
-    if(jNode.contains("rot")) { n->rx = jNode["rot"][0]; n->ry = jNode["rot"][1]; n->rz = jNode["rot"][2]; }
-    if(jNode.contains("scale")) { n->sx = jNode["scale"][0]; n->sy = jNode["scale"][1]; n->sz = jNode["scale"][2]; }
+void AddObj(std::string name, std::string modelName, 
+            float x, float y, float z, 
+            float rx, float ry, float rz, 
+            float sx, float sy, float sz,
+            bool isAnimated = false) 
+{
+    Object* obj = new Object();
+    obj->name = name;
+    obj->model = GetModel(modelName); 
     
-    n->isAnimated = jNode.value("isAnimated", false);
-    n->animSpeed = jNode.value("speed", 1.0f);
+    obj->x = x; obj->y = y; obj->z = z;
+    obj->rx = rx; obj->ry = ry; obj->rz = rz;
+    obj->sx = sx; obj->sy = sy; obj->sz = sz;
 
-    if (n->type == "mesh" && jNode.contains("model")) {
-        n->modelData = GetModel(jNode["model"]);
+    if (isAnimated) {
+        obj->spinAnimation = true;
+        obj->spinSpeed = 1.0f;
     }
 
-    if (jNode.contains("children")) {
-        for (auto& jChild : jNode["children"]) {
-            Node* childObj = parseNode(jChild);
-            n->children.push_back(childObj);
-        }
-    }
-    
-    flatList.push_back(n);
-    return n;
+    sceneObjects.push_back(obj);
 }
 
-void LoadScene(std::string path) {
-    std::ifstream f(path);
-    if(!f.is_open()) { std::cerr << "No scene.json found!\n"; return; }
-    json data = json::parse(f);
+void LoadScene() {
+    // Using your exact coordinates
+    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     90.0, 0.0, 90.0,        1.0, 1.0, 1.0,      false);
+    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    90.0, 0.0, 90.0,        0.013, 0.013, 0.013, false);
+    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    -2.361, 0.209, -90.0,   0.006, 0.006, 0.006, false);
+    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,          1.193, 1.183, 1.0,  false);
+    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    90.0, 0.0, 0.0,         0.591, 0.591, 0.591, true);
+    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,          0.179, 0.179, 0.026, false);
+    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     90.0, 0.0, 0.0,         0.002, 0.002, 0.002, false);
+    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,          0.022, 0.024, 0.029, false);
+    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,          1.328, 1.334, 1.0,  false);
+    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 180.0,        0.032, 0.032, 0.032, false);
+    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     -90.0, 90.0, 0.0,       0.383, 0.583, 1.0,  false);
 
-    for (auto& item : data["root"]) {
-        sceneGraph.push_back(parseNode(item));
-    }
-    if(!flatList.empty()) {
-        selectedNode = flatList[0];
-        selectedNode->isSelected = true;
+    if(!sceneObjects.empty()) {
+        selectedObject = sceneObjects[0]; 
     }
 }
 
 // ==========================================
-// 5. GLUT FUNCTIONS (Standard Class Style)
+// 6. GLUT FUNCTIONS
 // ==========================================
-void init() {
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_COLOR_MATERIAL);
-    
-    // Basic Light
-    GLfloat light_pos[] = { 10.0, 10.0, 10.0, 1.0 };
-    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-    
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f); // Dark Gray Background
-}
-
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    // Camera: Eye(x,y,z), Target(0,0,0), Up(0,0,1) -> Z is Up
-    gluLookAt(camX, camY, camZ,  0, 0, 0,  0, 0, 1);
+    // ORBIT CAMERA MATH (Z-Up Compatible)
+    float camX = cameraDist * sin(cameraAngle);
+    float camY = cameraDist * cos(cameraAngle); 
+    
+    // Look from (X, Y, Height) -> to (0,0,0) -> Z is UP
+    gluLookAt(camX, camY, cameraHeight,  0, 0, 0,  0, 0, 1);
 
-    // Draw Floor Grid (Optional helper)
+    // DEBUG: DRAW RED CUBE AT ORIGIN
+    // If you see this, your display works!
     glDisable(GL_LIGHTING);
-    glBegin(GL_LINES);
-    glColor3f(0.5, 0.5, 0.5);
-    for(int i=-10; i<=10; i++) {
-        glVertex3f(i, -10, 0); glVertex3f(i, 10, 0);
-        glVertex3f(-10, i, 0); glVertex3f(10, i, 0);
-    }
-    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glPushMatrix();
+    glColor3f(1.0, 0.0, 0.0); // Red
+    glutWireCube(0.5);        // Small Cube
+    glPopMatrix();
     glEnable(GL_LIGHTING);
 
-    // Draw Scene
-    for (Node* n : sceneGraph) {
-        n->DrawLegacy();
+    // Draw Objects
+    for (Object* obj : sceneObjects) {
+        if (!obj->model || !obj->model->loaded) continue;
+
+        glPushMatrix();
+        
+        // Transforms
+        glTranslatef(obj->x, obj->y, obj->z);
+        glRotatef(obj->rx, 1, 0, 0);
+        glRotatef(obj->ry, 0, 1, 0);
+        glRotatef(obj->rz, 0, 0, 1);
+        glScalef(obj->sx, obj->sy, obj->sz);
+
+        // Selection Highlight
+        if (obj == selectedObject) {
+            float pulse = (sin(glutGet(GLUT_ELAPSED_TIME) * 0.005f) + 1.0f) * 0.2f + 0.8f;
+            glColor3f(pulse, pulse, 0.5f); 
+        } else {
+            glColor3f(1, 1, 1);
+        }
+
+        // Texture Binding
+        if (obj->model->textureID != 0) {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, obj->model->textureID);
+        } else {
+            glDisable(GL_TEXTURE_2D);
+        }
+
+        // Draw Mesh
+        glBegin(GL_TRIANGLES);
+        int numVerts = obj->model->vertices.size() / 3;
+        for (int i = 0; i < numVerts; i++) {
+            // Normal
+            if (!obj->model->normals.empty())
+                glNormal3f(obj->model->normals[3*i+0], obj->model->normals[3*i+1], obj->model->normals[3*i+2]);
+            
+            // Texture Coord
+            if (!obj->model->texcoords.empty())
+                glTexCoord2f(obj->model->texcoords[2*i+0], obj->model->texcoords[2*i+1]);
+
+            // Vertex
+            glVertex3f(obj->model->vertices[3*i+0], obj->model->vertices[3*i+1], obj->model->vertices[3*i+2]);
+        }
+        glEnd();
+
+        glPopMatrix();
     }
 
     glutSwapBuffers();
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    if (!selectedObject) return;
+    float speed = 0.2f;
+    float rSpeed = 5.0f;
+
+    switch(key) {
+        case 27: exit(0); break; // ESC
+        case 9: // TAB - Cycle Selection
+            selectionIndex = (selectionIndex + 1) % sceneObjects.size();
+            selectedObject = sceneObjects[selectionIndex];
+            std::cout << "Selected: " << selectedObject->name << std::endl;
+            break;
+        
+        case ' ': isAnimating = !isAnimating; break; // Pause Animation
+
+        // Position
+        case 'w': selectedObject->y += speed; break;
+        case 's': selectedObject->y -= speed; break;
+        case 'a': selectedObject->x -= speed; break;
+        case 'd': selectedObject->x += speed; break;
+        case 'q': selectedObject->z += speed; break;
+        case 'e': selectedObject->z -= speed; break;
+
+        // Rotation
+        case 'r': selectedObject->rx += rSpeed; break;
+        case 'f': selectedObject->rx -= rSpeed; break;
+        case 't': selectedObject->ry += rSpeed; break;
+        case 'g': selectedObject->ry -= rSpeed; break;
+        case 'y': selectedObject->rz += rSpeed; break;
+        case 'h': selectedObject->rz -= rSpeed; break;
+        
+        // Scale
+        case 'u': selectedObject->sx += 0.001; selectedObject->sy += 0.001; selectedObject->sz += 0.001; break;
+        case 'j': selectedObject->sx -= 0.001; selectedObject->sy -= 0.001; selectedObject->sz -= 0.001; break;
+    }
+    glutPostRedisplay();
+}
+
+void specialKeys(int key, int x, int y) {
+    // Camera Orbit Controls
+    switch(key) {
+        case GLUT_KEY_LEFT:  cameraAngle -= 0.1f; break;
+        case GLUT_KEY_RIGHT: cameraAngle += 0.1f; break;
+        case GLUT_KEY_UP:    cameraDist -= 0.5f; break; // Zoom In
+        case GLUT_KEY_DOWN:  cameraDist += 0.5f; break; // Zoom Out
+    }
+    glutPostRedisplay();
+}
+
+void idle() {
+    if (isAnimating) {
+        for (Object* obj : sceneObjects) {
+            if (obj->spinAnimation) {
+                obj->rz += obj->spinSpeed;
+            }
+        }
+        glutPostRedisplay();
+    }
+}
+
+void init() {
+    glEnable(GL_DEPTH_TEST);
+    
+    // LIGHTING SETUP
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL); 
+    
+    // IMPORTANT: Make sure we see inside of rooms
+    glDisable(GL_CULL_FACE); 
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+
+    GLfloat light_pos[] = { 5.0, 5.0, 10.0, 1.0 };
+    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
+    
+    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 }
 
 void reshape(int w, int h) {
@@ -226,84 +355,23 @@ void reshape(int w, int h) {
     glMatrixMode(GL_MODELVIEW);
 }
 
-void keyboard(unsigned char key, int x, int y) {
-    float speed = 0.1f;
-    float rotSpeed = 2.0f;
-
-    switch(key) {
-        case 27: exit(0); break; // ESC
-        
-        // Tab to switch selection
-        case 9: // TAB key code
-            if(selectedNode) selectedNode->isSelected = false;
-            selectionIndex++;
-            if(selectionIndex >= flatList.size()) selectionIndex = 0;
-            selectedNode = flatList[selectionIndex];
-            selectedNode->isSelected = true;
-            std::cout << "Selected: " << selectedNode->name << std::endl;
-            break;
-
-        case '/': clockRunning = !clockRunning; break;
-        case '[': if(selectedNode) selectedNode->animSpeed -= 0.1f; break;
-        case ']': if(selectedNode) selectedNode->animSpeed += 0.1f; break;
-
-        // Transformation (QWERTY)
-        case 'q': if(selectedNode) selectedNode->x += speed; break;
-        case 'a': if(selectedNode) selectedNode->x -= speed; break;
-        case 'w': if(selectedNode) selectedNode->y += speed; break;
-        case 's': if(selectedNode) selectedNode->y -= speed; break;
-        case 'e': if(selectedNode) selectedNode->z += speed; break;
-        case 'd': if(selectedNode) selectedNode->z -= speed; break;
-
-        case 'r': if(selectedNode) selectedNode->rx += rotSpeed; break;
-        case 'f': if(selectedNode) selectedNode->rx -= rotSpeed; break;
-        case 't': if(selectedNode) selectedNode->ry += rotSpeed; break;
-        case 'g': if(selectedNode) selectedNode->ry -= rotSpeed; break;
-        case 'y': if(selectedNode) selectedNode->rz += rotSpeed; break;
-        case 'h': if(selectedNode) selectedNode->rz -= rotSpeed; break;
-    }
-    glutPostRedisplay();
-}
-
-void specialKeys(int key, int x, int y) {
-    float camSpeed = 0.5f;
-    switch(key) {
-        case GLUT_KEY_UP:    camY += camSpeed; break;
-        case GLUT_KEY_DOWN:  camY -= camSpeed; break;
-        case GLUT_KEY_LEFT:  camX -= camSpeed; break;
-        case GLUT_KEY_RIGHT: camX += camSpeed; break;
-        case GLUT_KEY_PAGE_UP: camZ += camSpeed; break;
-        case GLUT_KEY_PAGE_DOWN: camZ -= camSpeed; break;
-    }
-    glutPostRedisplay();
-}
-
-void idle() {
-    if (clockRunning) {
-        for(auto n : flatList) {
-            if(n->isAnimated) n->rz += n->animSpeed;
-        }
-        glutPostRedisplay();
-    }
-}
-
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(1024, 768);
-    glutCreateWindow("GLUT Room Editor");
+    glutCreateWindow("Final Room Project");
 
     init();
-    LoadScene("scene.json");
+    LoadScene();
 
     glutDisplayFunc(display);
-    glutReshapeFunc(reshape);
+    glutReshapeFunc(reshape); // Added reshape callback
     glutKeyboardFunc(keyboard);
-    glutSpecialFunc(specialKeys); // For Arrow Keys
+    glutSpecialFunc(specialKeys);
     glutIdleFunc(idle);
-
-    std::cout << "Controls:\nTAB: Select Object\nArrows: Move Camera\nQWE/ASD: Move Object\nRTY/FGH: Rotate Object\n";
     
+    std::cout << "CONTROLS:\nArrows: Orbit Camera\nTAB: Select Object\nWASD/QE: Move Object\nRF/TG/YH: Rotate Object\nSpace: Pause Animation\n";
+
     glutMainLoop();
     return 0;
 }

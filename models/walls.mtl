@@ -1,0 +1,122 @@
+# Blender 5.0.0 MTL File: 'living_room.blend'
+# www.blender.org
+
+newmtl 1
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 6
+map_Kd textures/Furnishings.Fabrics.Stripes.7.jpg
+map_d textures/Furnishings.Fabrics.Stripes.7.jpg
+
+newmtl 1.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 6
+map_Kd textures/Furnishings.Fabrics.Stripes.7.jpg
+map_d textures/Furnishings.Fabrics.Stripes.7.jpg
+
+newmtl 2
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 6
+map_Kd textures/Furnishings.Fabrics.Denim.Blue.png
+map_d textures/Furnishings.Fabrics.Denim.Blue.png
+
+newmtl 2.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 6
+map_Kd textures/Furnishings.Fabrics.Denim.Blue.png
+map_d textures/Furnishings.Fabrics.Denim.Blue.png
+
+newmtl 3
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 0.858824 0.250980
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 3
+
+newmtl 3.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 0.858824 0.250980
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 3
+
+newmtl Mat
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.099899 0.034340 0.009721
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Mat.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.099899 0.034340 0.009721
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Material.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd -s 10 10 10 textures/sprayed-wall-texture1_albedo.png
+
+newmtl Material.013
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Material.017
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd -s 10 10 10 textures/sprayed-wall-texture1_albedo.png
+
+newmtl Material.019
+Ns 554.714661
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/oak-wood-bare_albedo.png
