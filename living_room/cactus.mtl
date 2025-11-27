@@ -1,0 +1,22 @@
+# Blender 5.0.0 MTL File: 'living_room (real).blend'
+# www.blender.org
+
+newmtl Texture_0
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd textures/cactus1.jpg
+
+newmtl Texture_1
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd textures/cactus2.jpg

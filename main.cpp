@@ -5,8 +5,6 @@
 #include <cmath>
 
 // LIBRARIES
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -179,19 +177,30 @@ void AddObj(std::string name, std::string modelName,
 }
 
 void LoadScene() {
-    // UPDATED DATA: Position kept, Rotation set to 0, Scale set to 1
-    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      true);
-    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
-    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    //              Name             File                Pos (x,y,z)               Rot (0,0,0)             Scale (1,1,1)      Anim?
+    // --------------------------------------------------------------------------------------------------------------------------
+    AddObj("big_sofa",      "big_sofa.obj",      -1.854, 0.030, 0.198,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("bookshelf",     "bookshelf.obj",     -2.053, -1.771, 0.030,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("cactus",        "cactus.obj",        -0.155, -0.131, 0.503,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("carpet",        "carpet.obj",        -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    
+    // Clock needs animation = true
+    AddObj("clock",         "clock.obj",         -2.262, -1.811, 2.082,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      true);
+    
+    AddObj("curtain_left",  "curtain_left.obj",  -0.978, 2.213, 1.592,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("curtain_right", "curtain_right.obj",  0.619, 2.213, 1.592,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("floor",         "floor.obj",         -0.123, 0.011, 0.004,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("lamp",          "lamp.obj",          -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("shelf",         "shelf.obj",         -2.181, 0.072, 1.498,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("sofa",          "sofa.obj",          -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("table",         "table.obj",         -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("tv",            "tv.obj",             2.026, 0.132, 0.720,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("wall_left",     "wall_left.obj",     -2.321, 0.001, 1.404,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("wall_right",    "wall_right.obj",    -0.110, 2.372, 1.402,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("window_left",   "window_left.obj",   -0.498, 2.290, 1.604,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("window_right",  "window_right.obj",   0.349, 2.290, 1.604,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
 
+    // Set default selection to the first object (big_sofa)
     if(!sceneObjects.empty()) {
         selectedObject = sceneObjects[0]; 
     }
@@ -301,12 +310,12 @@ void keyboard(unsigned char key, int x, int y) {
             break;
 
         // Position
+        case 'q': selectedObject->x += speed; break;
+        case 'a': selectedObject->x -= speed; break;
         case 'w': selectedObject->y += speed; break;
         case 's': selectedObject->y -= speed; break;
-        case 'a': selectedObject->x -= speed; break;
-        case 'd': selectedObject->x += speed; break;
-        case 'q': selectedObject->z += speed; break;
-        case 'e': selectedObject->z -= speed; break;
+        case 'e': selectedObject->z += speed; break;
+        case 'd': selectedObject->z -= speed; break;
 
         // Rotation
         case 'r': selectedObject->rx += rSpeed; break;

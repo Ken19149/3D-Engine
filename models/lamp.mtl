@@ -1,4 +1,4 @@
-# Blender 5.0.0 MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room (real).blend'
 # www.blender.org
 
 newmtl Dark_Wood
@@ -15,12 +15,12 @@ map_Bump -bm 10.000000 textures/WoodFineDark004_NRM_3K.jpg
 newmtl Light
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
-Ni 1.000000
+Ni 1.500000
 d 1.000000
 illum 2
+map_Kd textures/old-paper_albedo.png
 
 newmtl Table_Wood
 Ns 250.000000

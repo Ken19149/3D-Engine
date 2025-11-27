@@ -1,12 +1,12 @@
-# Blender 5.0.0 MTL File: 'living_room.blend'
+# Blender 5.0.0 MTL File: 'living_room (real).blend'
 # www.blender.org
 
 newmtl Material.021
 Ns 635.009766
 Ka 1.000000 1.000000 1.000000
-Kd 0.107003 0.056673 0.029246
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
+map_Kd textures/WoodFineDark004_COL_3K.jpg
