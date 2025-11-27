@@ -35,7 +35,7 @@ struct Object {
     float sx = 1, sy = 1, sz = 1;
 
     // Animation
-    bool spinAnimation = false;     // Does this object spin?
+    bool spinAnimation = false;     
     float spinSpeed = 0.0f;
 
     Model* model = nullptr;
@@ -44,23 +44,25 @@ struct Object {
 // ==========================================
 // 2. GLOBALS
 // ==========================================
-std::vector<Object*> sceneObjects;  // Flat list
-std::vector<Model*> loadedModels;   // Resource cache
+std::vector<Object*> sceneObjects;  
+std::vector<Model*> loadedModels;   
 
 Object* selectedObject = nullptr;
 int selectionIndex = 0;
 
 // Camera (Orbit)
-float cameraAngle = 0.0f;   // Rotation around the room
-float cameraHeight = 5.0f;  // Lifted higher to see bigger objects
-float cameraDist = 15.0f;   // Moved back to see bigger objects
+float cameraAngle = 0.0f;   
+float cameraHeight = 5.0f;  
+float cameraDist = 15.0f;   
 
-bool isAnimating = true;
+bool isClockAnimating = true;
+bool isRoomSpinning = false; // NEW: Controls the 360 view
 
 // ==========================================
 // 3. TEXTURE LOADING
 // ==========================================
 GLuint LoadTextureFromFile(const char* filename) {
+    // UPDATED: User requested path "models/textures/"
     std::string fullPath = "models/textures/" + std::string(filename);
     
     int width, height, nrChannels;
@@ -105,8 +107,8 @@ Model* GetModel(std::string filename) {
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
+    // Load OBJ from "models/" folder
     std::string fullPath = "models/" + filename;
-    
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullPath.c_str(), "models/");
 
     if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
@@ -116,10 +118,9 @@ Model* GetModel(std::string filename) {
         return nullptr;
     }
 
-    // Smart Texture Loading from MTL
+    // Load Texture from MTL if available
     if (!materials.empty() && !materials[0].diffuse_texname.empty()) {
         std::string rawName = materials[0].diffuse_texname;
-        // Strip folder paths
         size_t lastSlash = rawName.find_last_of("/\\");
         std::string fileName = (lastSlash == std::string::npos) ? rawName : rawName.substr(lastSlash + 1);
 
@@ -178,20 +179,18 @@ void AddObj(std::string name, std::string modelName,
 }
 
 void LoadScene() {
-    // UPDATED: ALL SCALES SET TO 1.0
-    //              Name          File            Pos (x,y,z)               Rot (x,y,z)             Scale (x,y,z)      Anim?
-    // ---------------------------------------------------------------------------------------------------------------------
-    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, true);
-    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
-    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    // UPDATED DATA: Position kept, Rotation set to 0, Scale set to 1
+    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      true);
+    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
+    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     0.0, 0.0, 0.0,        1.0, 1.0, 1.0,      false);
 
     if(!sceneObjects.empty()) {
         selectedObject = sceneObjects[0]; 
@@ -205,12 +204,33 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    // ORBIT CAMERA MATH (Z-Up Compatible)
+    // ORBIT CAMERA
     float camX = cameraDist * sin(cameraAngle);
     float camY = cameraDist * cos(cameraAngle); 
-    
-    // Look from (X, Y, Height) -> to (0,0,0) -> Z is UP
     gluLookAt(camX, camY, cameraHeight,  0, 0, 0,  0, 0, 1);
+
+    // DYNAMIC LIGHTS
+    for (Object* obj : sceneObjects) {
+        if (obj->name == "tv") {
+            GLfloat blueColor[] = { 0.2f, 0.2f, 1.0f, 1.0f };
+            GLfloat lightPos[]  = { obj->x, obj->y, obj->z + 0.5f, 1.0f }; 
+            glLightfv(GL_LIGHT1, GL_DIFFUSE, blueColor);
+            glLightfv(GL_LIGHT1, GL_POSITION, lightPos);
+            glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0f);
+            glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.2f);
+            glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.05f);
+        }
+        
+        if (obj->name == "lamp") {
+            GLfloat orangeColor[] = { 1.0f, 0.7f, 0.2f, 1.0f };
+            GLfloat lightPos[]    = { obj->x, obj->y, obj->z + 1.5f, 1.0f }; 
+            glLightfv(GL_LIGHT2, GL_DIFFUSE, orangeColor);
+            glLightfv(GL_LIGHT2, GL_POSITION, lightPos);
+            glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 1.0f);
+            glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.1f);
+            glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.02f);
+        }
+    }
 
     glEnable(GL_LIGHTING);
 
@@ -235,7 +255,6 @@ void display() {
             glColor3f(1, 1, 1);
         }
 
-        // Texture Binding
         if (obj->model->textureID != 0) {
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, obj->model->textureID);
@@ -243,19 +262,13 @@ void display() {
             glDisable(GL_TEXTURE_2D);
         }
 
-        // Draw Mesh
         glBegin(GL_TRIANGLES);
         int numVerts = obj->model->vertices.size() / 3;
         for (int i = 0; i < numVerts; i++) {
-            // Normal
             if (!obj->model->normals.empty())
                 glNormal3f(obj->model->normals[3*i+0], obj->model->normals[3*i+1], obj->model->normals[3*i+2]);
-            
-            // Texture Coord
             if (!obj->model->texcoords.empty())
                 glTexCoord2f(obj->model->texcoords[2*i+0], obj->model->texcoords[2*i+1]);
-
-            // Vertex
             glVertex3f(obj->model->vertices[3*i+0], obj->model->vertices[3*i+1], obj->model->vertices[3*i+2]);
         }
         glEnd();
@@ -273,13 +286,19 @@ void keyboard(unsigned char key, int x, int y) {
 
     switch(key) {
         case 27: exit(0); break; // ESC
-        case 9: // TAB - Cycle Selection
+        case 9: // TAB
             selectionIndex = (selectionIndex + 1) % sceneObjects.size();
             selectedObject = sceneObjects[selectionIndex];
             std::cout << "Selected: " << selectedObject->name << std::endl;
             break;
         
-        case ' ': isAnimating = !isAnimating; break; // Pause Animation
+        case ' ': isClockAnimating = !isClockAnimating; break; // Space: Pause Clock
+        
+        // ENTER KEY (13): Toggle 360 Degree Room View
+        case 13: 
+            isRoomSpinning = !isRoomSpinning; 
+            std::cout << "360 Spin: " << (isRoomSpinning ? "ON" : "OFF") << std::endl;
+            break;
 
         // Position
         case 'w': selectedObject->y += speed; break;
@@ -297,7 +316,7 @@ void keyboard(unsigned char key, int x, int y) {
         case 'y': selectedObject->rz += rSpeed; break;
         case 'h': selectedObject->rz -= rSpeed; break;
         
-        // Scale (Adjust sensitivity)
+        // Scale
         case 'u': selectedObject->sx += 0.05; selectedObject->sy += 0.05; selectedObject->sz += 0.05; break;
         case 'j': selectedObject->sx -= 0.05; selectedObject->sy -= 0.05; selectedObject->sz -= 0.05; break;
     }
@@ -305,25 +324,31 @@ void keyboard(unsigned char key, int x, int y) {
 }
 
 void specialKeys(int key, int x, int y) {
-    // Camera Orbit Controls
     switch(key) {
         case GLUT_KEY_LEFT:  cameraAngle -= 0.1f; break;
         case GLUT_KEY_RIGHT: cameraAngle += 0.1f; break;
-        case GLUT_KEY_UP:    cameraDist -= 0.5f; break; // Zoom In
-        case GLUT_KEY_DOWN:  cameraDist += 0.5f; break; // Zoom Out
+        case GLUT_KEY_UP:    cameraDist -= 0.5f; break; 
+        case GLUT_KEY_DOWN:  cameraDist += 0.5f; break; 
     }
     glutPostRedisplay();
 }
 
 void idle() {
-    if (isAnimating) {
+    // 1. Clock Animation (Updated: Rotate -X)
+    if (isClockAnimating) {
         for (Object* obj : sceneObjects) {
             if (obj->spinAnimation) {
-                obj->rx -= obj->spinSpeed;
+                obj->rx -= obj->spinSpeed; 
             }
         }
-        glutPostRedisplay();
     }
+
+    // 2. Room 360 Spin Animation (New!)
+    if (isRoomSpinning) {
+        cameraAngle += 0.005f; // Adjust this number to change spin speed
+    }
+
+    glutPostRedisplay();
 }
 
 void init() {
@@ -331,10 +356,11 @@ void init() {
     
     // LIGHTING SETUP
     glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHT0); // White general
+    glEnable(GL_LIGHT1); // TV Blue
+    glEnable(GL_LIGHT2); // Lamp Orange
+
     glEnable(GL_COLOR_MATERIAL); 
-    
-    // IMPORTANT: Make sure we see inside of rooms
     glDisable(GL_CULL_FACE); 
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 
@@ -368,7 +394,7 @@ int main(int argc, char** argv) {
     glutSpecialFunc(specialKeys);
     glutIdleFunc(idle);
     
-    std::cout << "CONTROLS:\nArrows: Orbit Camera\nTAB: Select Object\nWASD/QE: Move Object\nRF/TG/YH: Rotate Object\nSpace: Pause Animation\n";
+    std::cout << "CONTROLS:\nArrows: Manual Camera\nENTER: Toggle 360 View\nTAB: Select Object\nWASD/QE: Move Object\nRF/TG/YH: Rotate Object\nSpace: Pause Clock\n";
 
     glutMainLoop();
     return 0;
