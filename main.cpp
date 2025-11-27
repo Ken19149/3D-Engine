@@ -52,8 +52,8 @@ int selectionIndex = 0;
 
 // Camera (Orbit)
 float cameraAngle = 0.0f;   // Rotation around the room
-float cameraHeight = 3.0f;  // Height (Lifted up slightly)
-float cameraDist = 8.0f;    // Distance (Close enough to see inside)
+float cameraHeight = 5.0f;  // Lifted higher to see bigger objects
+float cameraDist = 15.0f;   // Moved back to see bigger objects
 
 bool isAnimating = true;
 
@@ -61,7 +61,7 @@ bool isAnimating = true;
 // 3. TEXTURE LOADING
 // ==========================================
 GLuint LoadTextureFromFile(const char* filename) {
-    std::string fullPath = "models/" + std::string(filename);
+    std::string fullPath = "models/textures/" + std::string(filename);
     
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
@@ -107,7 +107,6 @@ Model* GetModel(std::string filename) {
 
     std::string fullPath = "models/" + filename;
     
-    // Using standard loader (trusting your texture paths)
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullPath.c_str(), "models/");
 
     if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
@@ -117,10 +116,15 @@ Model* GetModel(std::string filename) {
         return nullptr;
     }
 
+    // Smart Texture Loading from MTL
     if (!materials.empty() && !materials[0].diffuse_texname.empty()) {
-        std::string texName = materials[0].diffuse_texname;
-        std::cout << "[Texture: " << texName << "] ";
-        m->textureID = LoadTextureFromFile(texName.c_str());
+        std::string rawName = materials[0].diffuse_texname;
+        // Strip folder paths
+        size_t lastSlash = rawName.find_last_of("/\\");
+        std::string fileName = (lastSlash == std::string::npos) ? rawName : rawName.substr(lastSlash + 1);
+
+        std::cout << "[Texture: " << fileName << "] ";
+        m->textureID = LoadTextureFromFile(fileName.c_str());
     }
 
     for (const auto& shape : shapes) {
@@ -174,18 +178,20 @@ void AddObj(std::string name, std::string modelName,
 }
 
 void LoadScene() {
-    // Using your exact coordinates
-    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     90.0, 0.0, 90.0,        1.0, 1.0, 1.0,      false);
-    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    90.0, 0.0, 90.0,        0.013, 0.013, 0.013, false);
-    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    -2.361, 0.209, -90.0,   0.006, 0.006, 0.006, false);
-    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,          1.193, 1.183, 1.0,  false);
-    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    90.0, 0.0, 0.0,         0.591, 0.591, 0.591, true);
-    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,          0.179, 0.179, 0.026, false);
-    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     90.0, 0.0, 0.0,         0.002, 0.002, 0.002, false);
-    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,          0.022, 0.024, 0.029, false);
-    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,          1.328, 1.334, 1.0,  false);
-    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 180.0,        0.032, 0.032, 0.032, false);
-    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     -90.0, 90.0, 0.0,       0.383, 0.583, 1.0,  false);
+    // UPDATED: ALL SCALES SET TO 1.0
+    //              Name          File            Pos (x,y,z)               Rot (x,y,z)             Scale (x,y,z)      Anim?
+    // ---------------------------------------------------------------------------------------------------------------------
+    AddObj("big_sofa",    "big_sofa.obj",    -1.854, 0.030, 0.198,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("bookshelf",   "bookshelf.obj",   -2.053, -1.771, 0.030,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("cactus",      "cactus.obj",      -0.155, -0.131, 0.503,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("carpet",      "carpet.obj",      -0.039, 0.244, 0.046,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("clock",       "clock.obj",       -2.262, -1.811, 2.082,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, true);
+    AddObj("lamp",        "lamp.obj",        -1.829, 1.863, 0.088,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("shelf",       "shelf.obj",       -2.181, 0.072, 1.499,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("sofa",        "sofa.obj",        -0.077, 1.839, 0.336,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("table",       "table.obj",       -0.285, -0.104, 0.048,    0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("tv",          "tv.obj",          2.026, 0.132, 0.720,      0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
+    AddObj("walls",       "walls.obj",       -0.178, 2.213, 1.590,     0.0, 0.0, 0.0,          1.0, 1.0, 1.0, false);
 
     if(!sceneObjects.empty()) {
         selectedObject = sceneObjects[0]; 
@@ -206,14 +212,6 @@ void display() {
     // Look from (X, Y, Height) -> to (0,0,0) -> Z is UP
     gluLookAt(camX, camY, cameraHeight,  0, 0, 0,  0, 0, 1);
 
-    // DEBUG: DRAW RED CUBE AT ORIGIN
-    // If you see this, your display works!
-    glDisable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
-    glPushMatrix();
-    glColor3f(1.0, 0.0, 0.0); // Red
-    glutWireCube(0.5);        // Small Cube
-    glPopMatrix();
     glEnable(GL_LIGHTING);
 
     // Draw Objects
@@ -299,9 +297,9 @@ void keyboard(unsigned char key, int x, int y) {
         case 'y': selectedObject->rz += rSpeed; break;
         case 'h': selectedObject->rz -= rSpeed; break;
         
-        // Scale
-        case 'u': selectedObject->sx += 0.001; selectedObject->sy += 0.001; selectedObject->sz += 0.001; break;
-        case 'j': selectedObject->sx -= 0.001; selectedObject->sy -= 0.001; selectedObject->sz -= 0.001; break;
+        // Scale (Adjust sensitivity)
+        case 'u': selectedObject->sx += 0.05; selectedObject->sy += 0.05; selectedObject->sz += 0.05; break;
+        case 'j': selectedObject->sx -= 0.05; selectedObject->sy -= 0.05; selectedObject->sz -= 0.05; break;
     }
     glutPostRedisplay();
 }
@@ -321,7 +319,7 @@ void idle() {
     if (isAnimating) {
         for (Object* obj : sceneObjects) {
             if (obj->spinAnimation) {
-                obj->rz += obj->spinSpeed;
+                obj->rx -= obj->spinSpeed;
             }
         }
         glutPostRedisplay();
@@ -365,7 +363,7 @@ int main(int argc, char** argv) {
     LoadScene();
 
     glutDisplayFunc(display);
-    glutReshapeFunc(reshape); // Added reshape callback
+    glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(specialKeys);
     glutIdleFunc(idle);
